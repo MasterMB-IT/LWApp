@@ -1,96 +1,74 @@
 import streamlit as st
-import pandas as pd
 
-# --- CONFIGURAZIONE AVANZATA ---
-st.set_page_config(page_title="Last War Tactical AI", layout="wide")
+# Configurazione UI stile "Tactical Mode"
+st.set_page_config(page_title="Last War Engine Pro", layout="wide")
 
-def apply_custom_css():
-    st.markdown("""
-        <style>
-        .main { background-color: #0e1117; color: white; }
-        .stMetric { background-color: #1f2937; padding: 15px; border-radius: 10px; border: 1px solid #3b82f6; }
-        </style>
-    """, unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    .reportview-container { background: #0e1117; }
+    .stNumberInput > label { color: #3b82f6; font-weight: bold; }
+    .stat-card { border: 1px solid #262730; padding: 20px; border-radius: 10px; background: #161b22; }
+    </style>
+""", unsafe_allow_html=True)
 
-apply_custom_css()
+# --- DATABASE DINAMICO (Pre-compilato con i tuoi screenshot) ---
+if 'stats' not in st.session_state:
+    st.session_state.stats = {
+        "Attacco Carro": {"Tecno": 40.0, "Drone": 15.5, "Onore": 2.5, "VIP": 7.5, "Cosmetici": 20.0},
+        "Difesa Carro": {"Tecno": 40.0, "Drone": 13.0, "Onore": 4.0, "VIP": 7.5, "Cosmetici": 8.0},
+        "PS Carro": {"Tecno": 40.0, "Drone": 13.0, "Onore": 4.5, "VIP": 7.5, "Cosmetici": 15.0},
+        "Danno Eroe": {"Tecno": 35.0, "Drone": 9.75, "Costruzione": 7.06, "Cosmetici": 1.5}
+    }
 
-# --- DATABASE EROI (Aggiornato 2026) ---
-HERO_DB = {
-    "Kimberly": {"tipo": "Tank", "ruolo": "DPS", "tier": "UR"},
-    "Murphy": {"tipo": "Tank", "ruolo": "Tank", "tier": "UR"},
-    "Marshall": {"tipo": "Tank", "ruolo": "Support", "tier": "UR"},
-    "Stetman": {"tipo": "Tank", "ruolo": "DPS", "tier": "UR"},
-    "Williams": {"tipo": "Tank", "ruolo": "Tank", "tier": "UR"},
-    "Lucius": {"tipo": "Aereo", "ruolo": "Tank", "tier": "UR"},
-    "DVA": {"tipo": "Aereo", "ruolo": "DPS", "tier": "UR"},
-    "Schuyler": {"tipo": "Aereo", "ruolo": "Crowd Control", "tier": "UR"}
-}
+st.title("🛡️ Last War: Tactical Optimizer V2")
+st.write("Dati estratti dagli screenshot aggiornati al maggio 2026.")
 
-# --- SIDEBAR: INPUT DATI ---
-with st.sidebar:
-    st.title("⚙️ Parametri Globali")
-    
-    tab1, tab2 = st.tabs(["Dati Base", "Ricerca & Drone"])
-    
-    with tab1:
-        st.subheader("Bonus Skin & Decor")
-        atk_pct = st.number_input("Attacco % Totale", value=130.0)
-        hp_flat = st.number_input("PS Flat Totali", value=1524554)
-        
-    with tab2:
-        st.subheader("Ricerca Militare")
-        sf_level = st.slider("Special Forces (%)", 0, 100, 45)
-        drone_parts_priority = st.selectbox("Focus Drone", ["Attacco (Destra)", "Difesa (Sinistra)"])
+# --- PANNELLO DI MODIFICA (MODIFICABILE IN APP) ---
+with st.expander("📝 MODIFICA VALORI (Aggiorna qui i tuoi dati giornalieri)"):
+    cols = st.columns(4)
+    for i, (categoria, valori) in enumerate(st.session_state.stats.items()):
+        with cols[i]:
+            st.subheader(categoria)
+            for sub_cat in valori:
+                st.session_state.stats[categoria][sub_cat] = st.number_input(
+                    f"{sub_cat} (%)", 
+                    value=valori[sub_cat], 
+                    key=f"{categoria}_{sub_cat}"
+                )
 
-# --- MOTORE TATTICO (Logica di Counter) ---
-def analyze_lineup(selected_heroes, enemy_type):
-    # Calcolo Sinergia (es. 5 Tank = 20% bonus)
-    types = [HERO_DB[h]["tipo"] for h in selected_heroes]
-    tank_count = types.count("Tank")
-    
-    # Logica di Counter
-    # Tank batte Missile (+20%), ma perde da Aereo (-20%)
-    counter_multiplier = 1.0
-    if tank_count >= 4:
-        if enemy_type == "Aereo": counter_multiplier = 0.8
-        elif enemy_type == "Missile": counter_multiplier = 1.2
-        
-    return tank_count, counter_multiplier
+# --- MOTORE DI CALCOLO E ANALISI ---
+st.divider()
+st.header("📊 Analisi Performance Reale")
 
-# --- INTERFACCIA PRINCIPALE ---
-st.title("🛡️ Last War Tactical Optimizer")
+col_res1, col_res2, col_res3, col_res4 = st.columns(4)
 
-col_main, col_stats = st.columns([3, 1])
+def display_stat(label, data, container):
+    totale = sum(data.values())
+    container.metric(label, f"{totale:.2f}%")
+    # Suggerimento intelligente basato sui tuoi dati
+    if totale < 60 and label == "Danno Eroe":
+        container.warning("⚠️ Priorità: Alza il Boost Costruzione")
+    elif totale > 80:
+        container.success("✅ Statistica Eccellente")
 
-with col_main:
-    st.subheader("⚔️ Simulatore Scontro")
-    enemy_team = st.radio("Tipo Team Nemico:", ["Tank", "Aereo", "Missile"], horizontal=True)
-    
-    my_team = st.multiselect("Il tuo schieramento (Max 5):", 
-                             options=list(HERO_DB.keys()), 
-                             default=["Kimberly", "Murphy", "Marshall", "Stetman", "Williams"])
-    
-    if len(my_team) == 5:
-        tanks, multiplier = analyze_lineup(my_team, enemy_team)
-        
-        st.divider()
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Bonus Fazione", f"+{tanks*4}%" if tanks >=3 else "0%")
-        c2.metric("Efficacia vs Nemico", f"{multiplier*100}%", delta=f"{int((multiplier-1)*100)}%")
-        
-        if multiplier < 1.0:
-            st.error(f"⚠️ Attenzione: Il tuo team Tank è debole contro {enemy_team}. Valuta di inserire Lucius o DVA.")
-        else:
-            st.success("✅ Matchup Favorevole o Neutro.")
-    
-    st.subheader("📈 Roadmap Miglioramenti (Consigli AI)")
-    st.info("""
-    - **Priorità 1:** Porta l'arma di **Stetman al Livello 30**. Al momento è l'anello debole del tuo DPS backline.
-    - **Priorità 2:** Concentra i 'Drone Component Choice Chests' sui componenti di **Destra** (Missile/Fuel Cell). Il tuo attacco % è buono, ma manca il moltiplicatore del drone.
-    """)
+display_stat("Attacco Totale", st.session_state.stats["Attacco Carro"], col_res1)
+display_stat("Difesa Totale", st.session_state.stats["Difesa Carro"], col_res2)
+display_stat("PS Totali", st.session_state.stats["PS Carro"], col_res3)
+display_stat("Danno Eroe", st.session_state.stats["Danno Eroe"], col_res4)
 
-with col_stats:
-    st.subheader("📊 Tuoi Totali")
-    st.write(f"**PS Extra:** {hp_flat:,}")
-    st.write(f"**Attacco %:** {atk_pct}%")
-    st.progress(sf_level / 100, text=f"Ricerca SF: {sf_level}%")
+# --- SEZIONE MIGLIORIE (IL "CERVELLO" DELL'APP) ---
+st.divider()
+st.header("💡 Piano d'Azione per Miglioramenti")
+
+tab_drone, tab_tecno, tab_hero = st.tabs(["Focus Drone", "Ricerca Strategica", "Sinergia Team"])
+
+with tab_drone:
+    st.info("I tuoi dati mostrano un contributo del Drone del 15.5% sull'attacco. Per livellare con i top player, devi puntare al 20%.")
+    st.write("**Azione:** Converti i componenti difesa in componenti attacco se il tuo Marshall sopravvive oltre i 30 secondi.")
+
+with tab_tecno:
+    st.success("Il tuo 'Boost Tecnologia' è solido (40%).")
+    st.write("**Prossimo Step:** Concentrati sulla branca 'Unità Eroe' per sbloccare il sesto livello di riduzione danno, che al momento hai solo al 10.75%.")
+
+with tab_hero:
+    st.warning("Analisi Counter: Con il tuo 85% di attacco Carro, Kimberly è devastante. Ma se incontri un team Aereo (DVA/Schuyler), il tuo vantaggio si riduce del 20% netto.")
