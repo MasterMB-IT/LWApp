@@ -1,74 +1,113 @@
 import streamlit as st
+import pandas as pd
 
-# Configurazione UI stile "Tactical Mode"
-st.set_page_config(page_title="Last War Engine Pro", layout="wide")
+# --- CONFIGURAZIONE UI STILE TACTICAL ---
+st.set_page_config(
+    page_title="Last War Tactical Engine Pro",
+    page_icon="🛡️",
+    layout="wide"
+)
 
+# Design personalizzato per richiamare i colori del gioco
 st.markdown("""
     <style>
-    .reportview-container { background: #0e1117; }
-    .stNumberInput > label { color: #3b82f6; font-weight: bold; }
-    .stat-card { border: 1px solid #262730; padding: 20px; border-radius: 10px; background: #161b22; }
+    .main { background-color: #0d1117; color: #c9d1d9; }
+    .stMetric { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; }
+    .stProgress > div > div > div > div { background-color: #58a6ff; }
+    h1, h2, h3 { color: #58a6ff; font-family: 'Orbitron', sans-serif; }
+    .highlight-box { background-color: #23863633; border-left: 5px solid #238636; padding: 15px; border-radius: 5px; margin: 10px 0; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- DATABASE DINAMICO (Pre-compilato con i tuoi screenshot) ---
-if 'stats' not in st.session_state:
-    st.session_state.stats = {
-        "Attacco Carro": {"Tecno": 40.0, "Drone": 15.5, "Onore": 2.5, "VIP": 7.5, "Cosmetici": 20.0},
-        "Difesa Carro": {"Tecno": 40.0, "Drone": 13.0, "Onore": 4.0, "VIP": 7.5, "Cosmetici": 8.0},
-        "PS Carro": {"Tecno": 40.0, "Drone": 13.0, "Onore": 4.5, "VIP": 7.5, "Cosmetici": 15.0},
-        "Danno Eroe": {"Tecno": 35.0, "Drone": 9.75, "Costruzione": 7.06, "Cosmetici": 1.5}
+# --- INIZIALIZZAZIONE DATI (Mappatura dai tuoi Screenshot) ---
+if 'data' not in st.session_state:
+    st.session_state.data = {
+        "Atk_Carro": {"Tecno": 40.0, "Drone": 15.5, "Onore": 2.5, "VIP": 7.5, "Cosmetici": 20.0},
+        "Dif_Carro": {"Tecno": 40.0, "Drone": 13.0, "Onore": 4.0, "VIP": 7.5, "Cosmetici": 8.0},
+        "PS_Carro": {"Tecno": 40.0, "Drone": 13.0, "Onore": 4.5, "VIP": 7.5, "Cosmetici": 15.0},
+        "Danno_Eroe": {"Tecno": 35.0, "Drone": 9.75, "Costruzione": 7.06, "Cosmetici": 1.5},
+        "Drone_Comp": {
+            "Radar Precisione (Atk)": 92,
+            "Sensore (Dif)": 86,
+            "Processore (PS)": 87,
+            "Radar (Atk)": 16,
+            "Chip Memoria (Dif)": 13,
+            "Motore (PS)": 25
+        },
+        "Flat_Stats": {"PS": 1524554, "Dif": 23839, "Atk": 24060}
     }
 
-st.title("🛡️ Last War: Tactical Optimizer V2")
-st.write("Dati estratti dagli screenshot aggiornati al maggio 2026.")
+# --- SIDEBAR: PANNELLO DI AGGIORNAMENTO GIORNALIERO ---
+with st.sidebar:
+    st.title("⚙️ Pannello Comando")
+    st.info("Aggiorna qui i tuoi dati man mano che cresci nel gioco.")
+    
+    tier_truppe = st.selectbox("Tier Truppe Attuale", ["T9", "T10", "T11 (In Progress)", "T11 Unlock"])
+    
+    with st.expander("📝 Modifica Bonus %"):
+        for cat, vals in st.session_state.data.items():
+            if isinstance(vals, dict) and "Comp" not in cat:
+                st.subheader(cat.replace("_", " "))
+                for k in vals:
+                    st.session_state.data[cat][k] = st.number_input(f"{k} %", value=vals[k], key=f"{cat}_{k}")
 
-# --- PANNELLO DI MODIFICA (MODIFICABILE IN APP) ---
-with st.expander("📝 MODIFICA VALORI (Aggiorna qui i tuoi dati giornalieri)"):
-    cols = st.columns(4)
-    for i, (categoria, valori) in enumerate(st.session_state.stats.items()):
-        with cols[i]:
-            st.subheader(categoria)
-            for sub_cat in valori:
-                st.session_state.stats[categoria][sub_cat] = st.number_input(
-                    f"{sub_cat} (%)", 
-                    value=valori[sub_cat], 
-                    key=f"{categoria}_{sub_cat}"
-                )
+# --- DASHBOARD PRINCIPALE ---
+st.title("🛡️ Last War: Tactical Optimizer Pro")
+st.markdown("### Configurazione End-Game: Transizione T11")
 
-# --- MOTORE DI CALCOLO E ANALISI ---
+# --- RIGA 1: STATISTICHE REALI ---
+st.header("📊 Analisi Buff Totali")
+c1, c2, c3, c4 = st.columns(4)
+
+def get_total(key):
+    return sum(st.session_state.data[key].values())
+
+c1.metric("Attacco Carro", f"+{get_total('Atk_Carro'):.2f}%")
+c2.metric("Difesa Carro", f"+{get_total('Dif_Carro'):.2f}%")
+c3.metric("PS Carro", f"+{get_total('PS_Carro'):.2f}%")
+c4.metric("Danno Eroe", f"+{get_total('Danno_Eroe'):.2f}%")
+
+# --- RIGA 2: DRONE & TECNOLOGIA ---
 st.divider()
-st.header("📊 Analisi Performance Reale")
+col_left, col_right = st.columns(2)
 
-col_res1, col_res2, col_res3, col_res4 = st.columns(4)
+with col_left:
+    st.header("🛸 Drone Tactical Analyzer (Lv. 180)")
+    st.write("Stato Componenti Livello 9:")
+    for comp, prog in st.session_state.data["Drone_Comp"].items():
+        st.write(f"**{comp}** ({prog}%)")
+        st.progress(prog / 100)
+    
+    if st.session_state.data["Drone_Comp"]["Radar (Atk)"] < 20:
+        st.warning("⚠️ **Focus Radar**: Il Radar secondario è molto basso (16%). Questo penalizza il tuo DPS totale rispetto al potenziale delle T11.")
 
-def display_stat(label, data, container):
-    totale = sum(data.values())
-    container.metric(label, f"{totale:.2f}%")
-    # Suggerimento intelligente basato sui tuoi dati
-    if totale < 60 and label == "Danno Eroe":
-        container.warning("⚠️ Priorità: Alza il Boost Costruzione")
-    elif totale > 80:
-        container.success("✅ Statistica Eccellente")
+with col_right:
+    st.header("⚔️ Simulatore Scontro T11")
+    st.markdown("""
+        Il passaggio alle **T11** attiva la **Soppressione Tier**. 
+        Il calcolo del danno finale sarà influenzato dal tuo Bonus Danno Eroe attuale (+53.31%).
+    """)
+    
+    enemy_tier = st.radio("Scegli Tier Nemico per simulazione:", ["T10", "T11"])
+    
+    # Logica di calcolo semplificata
+    soppressione = 0.15 if (tier_truppe == "T11 Unlock" and enemy_tier == "T10") else 0
+    power_mult = (get_total("Atk_Carro") / 100) + (get_total("Danno_Eroe") / 100) + soppressione
+    
+    st.metric("Moltiplicatore Danno Finale Stimato", f"x{1 + power_mult:.2f}")
+    
+    st.markdown("<div class='highlight-box'>", unsafe_allow_html=True)
+    st.write("💡 **Consiglio AI Strategico:**")
+    if get_total("PS_Carro") < 85:
+        st.write("Le tue T11 saranno dei cannoni di vetro. Priorità: Alza la Ricerca 'Unità Eroe' per portare i PS Carro sopra il 90%.")
+    else:
+        st.write("Bilanciamento ottimo. Concentrati sull'Arma Esclusiva di Stetmann al 30 per massimizzare il buff T11.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-display_stat("Attacco Totale", st.session_state.stats["Attacco Carro"], col_res1)
-display_stat("Difesa Totale", st.session_state.stats["Difesa Carro"], col_res2)
-display_stat("PS Totali", st.session_state.stats["PS Carro"], col_res3)
-display_stat("Danno Eroe", st.session_state.stats["Danno Eroe"], col_res4)
+# --- TABELLA DETTAGLIATA ---
+with st.expander("🔍 Vedi Tabella Dettagliata Fonti"):
+    df = pd.DataFrame(st.session_state.data).T
+    st.table(df)
 
-# --- SEZIONE MIGLIORIE (IL "CERVELLO" DELL'APP) ---
 st.divider()
-st.header("💡 Piano d'Azione per Miglioramenti")
-
-tab_drone, tab_tecno, tab_hero = st.tabs(["Focus Drone", "Ricerca Strategica", "Sinergia Team"])
-
-with tab_drone:
-    st.info("I tuoi dati mostrano un contributo del Drone del 15.5% sull'attacco. Per livellare con i top player, devi puntare al 20%.")
-    st.write("**Azione:** Converti i componenti difesa in componenti attacco se il tuo Marshall sopravvive oltre i 30 secondi.")
-
-with tab_tecno:
-    st.success("Il tuo 'Boost Tecnologia' è solido (40%).")
-    st.write("**Prossimo Step:** Concentrati sulla branca 'Unità Eroe' per sbloccare il sesto livello di riduzione danno, che al momento hai solo al 10.75%.")
-
-with tab_hero:
-    st.warning("Analisi Counter: Con il tuo 85% di attacco Carro, Kimberly è devastante. Ma se incontri un team Aereo (DVA/Schuyler), il tuo vantaggio si riduce del 20% netto.")
+st.caption("Last War Tactical Engine | Sviluppato per Account High-End | Versione Maggio 2026")
